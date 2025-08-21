@@ -1091,101 +1091,105 @@
         }
         
         async function analyzeFieldBoundaries() {
-                if (!uploadedGeoTIFF) {
-                    alert('Please upload a GeoTIFF file first');
-                    return;
-                }
-                
-                try {
-                    // Show loading state
-                    const mapTab = document.getElementById('mapTab');
-                    const originalContent = mapTab.innerHTML;
-                    mapTab.innerHTML = `
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            <p>Processing GeoTIFF data...</p>
-                        </div>
-                    `;
-                    
-                    // Process the GeoTIFF to detect field boundaries
-                    const fieldData = await processGeoTIFF(uploadedGeoTIFF);
-                    
-                    // Update stats
-                    document.getElementById('fieldCount').textContent = fieldData.fieldCount;
-                    document.getElementById('totalArea').textContent = `${fieldData.totalArea.toFixed(2)} ha`;
-                    document.getElementById('avgSize').textContent = `${fieldData.avgSize.toFixed(2)} ha`;
-                    document.getElementById('productivityIndex').textContent = fieldData.productivityIndex.toFixed(1);
-                    
-                    // Render map with field boundaries
-                    renderMapWithFieldData(fieldData);
-                    
-                    // Show success message
-                    showStatus(geotiffStatus, `Field analysis complete! Detected ${fieldData.fieldCount} fields.`, 'success');
-                    
-                } catch (error) {
-                    console.error('Error analyzing field boundaries:', error);
-                    
-                    // Restore the original tab content structure first
-                    document.getElementById('mapTab').innerHTML = `
-                        <div class="visualization-controls">
-                            <div class="control-group">
-                                <label for="mapStyle">Map Style</label>
-                                <select id="mapStyle">
-                                    <option value="standard">Standard</option>
-                                    <option value="satellite">Satellite</option>
-                                    <option value="terrain">Terrain</option>
-                                </select>
-                            </div>
-                            <div class="control-group">
-                                <label for="overlay">Data Overlay</label>
-                                <select id="overlay">
-                                    <option value="none">None</option>
-                                    <option value="productivity">Productivity</option>
-                                    <option value="soil">Soil Quality</option>
-                                    <option value="rainfall">Rainfall</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="map-container" id="map"></div>
-                        <div class="loading" style="text-align: center; padding: 2rem;">
-                            <div style="color: var(--danger); font-size: 1.2rem; margin-bottom: 1rem;">❌ Error processing GeoTIFF file</div>
-                            <p>${error.message}</p>
-                            <button class="cta-button" style="margin-top: 1rem;" onclick="location.reload()">Try Again</button>
-                        </div>
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-label">Total Field Area</div>
-                                <div class="stat-value" id="totalArea">0 ha</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Detected Fields</div>
-                                <div class="stat-value" id="fieldCount">0</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Avg. Field Size</div>
-                                <div class="stat-value" id="avgSize">0 ha</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Productivity Index</div>
-                                <div class="stat-value" id="productivityIndex">0</div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Reinitialize the map
-                    const map = L.map('map').setView([1.3733, 32.2903], 8);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
-                    
-                    // Reinitialize event listeners for the new selects
-                    document.getElementById('mapStyle').addEventListener('change', updateMapStyle);
-                    document.getElementById('overlay').addEventListener('change', updateMapOverlay);
-                    
-                    showStatus(geotiffStatus, `Error: ${error.message}`, 'error');
-                }
-            }
-                    
+    if (!uploadedGeoTIFF) {
+        alert('Please upload a GeoTIFF file first');
+        return;
+    }
+    
+    try {
+        // Show loading state
+        const mapTab = document.getElementById('mapTab');
+        const originalContent = mapTab.innerHTML;
+        mapTab.innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Processing GeoTIFF data...</p>
+            </div>
+        `;
+        
+        // Process the GeoTIFF to detect field boundaries
+        const fieldData = await processGeoTIFF(uploadedGeoTIFF);
+        
+        // Update stats - use querySelector to avoid issues with missing elements
+        const fieldCountEl = document.getElementById('fieldCount');
+        const totalAreaEl = document.getElementById('totalArea');
+        const avgSizeEl = document.getElementById('avgSize');
+        const productivityIndexEl = document.getElementById('productivityIndex');
+        
+        if (fieldCountEl) fieldCountEl.textContent = fieldData.fieldCount;
+        if (totalAreaEl) totalAreaEl.textContent = `${fieldData.totalArea.toFixed(2)} ha`;
+        if (avgSizeEl) avgSizeEl.textContent = `${fieldData.avgSize.toFixed(2)} ha`;
+        if (productivityIndexEl) productivityIndexEl.textContent = fieldData.productivityIndex.toFixed(1);
+        
+        // Render map with field boundaries
+        renderMapWithFieldData(fieldData);
+        
+        // Show success message
+        showStatus(geotiffStatus, `Field analysis complete! Detected ${fieldData.fieldCount} fields.`, 'success');
+        
+    } catch (error) {
+        console.error('Error analyzing field boundaries:', error);
+        
+        // Restore the map tab with proper structure
+        document.getElementById('mapTab').innerHTML = `
+            <div class="visualization-controls">
+                <div class="control-group">
+                    <label for="mapStyle">Map Style</label>
+                    <select id="mapStyle">
+                        <option value="standard">Standard</option>
+                        <option value="satellite">Satellite</option>
+                        <option value="terrain">Terrain</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="overlay">Data Overlay</label>
+                    <select id="overlay">
+                        <option value="none">None</option>
+                        <option value="productivity">Productivity</option>
+                        <option value="soil">Soil Quality</option>
+                        <option value="rainfall">Rainfall</option>
+                    </select>
+                </div>
+            </div>
+            <div class="map-container" id="map"></div>
+            <div class="error-message" style="text-align: center; padding: 2rem;">
+                <div style="color: var(--danger); font-size: 1.2rem; margin-bottom: 1rem;">❌ Error processing GeoTIFF file</div>
+                <p>${error.message}</p>
+                <button class="cta-button" style="margin-top: 1rem;" onclick="analyzeFieldBoundaries()">Try Again</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Field Area</div>
+                    <div class="stat-value" id="totalArea">0 ha</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Detected Fields</div>
+                    <div class="stat-value" id="fieldCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg. Field Size</div>
+                    <div class="stat-value" id="avgSize">0 ha</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Productivity Index</div>
+                    <div class="stat-value" id="productivityIndex">0</div>
+                </div>
+            </div>
+        `;
+        
+        // Reinitialize the map
+        const map = L.map('map').setView([1.3733, 32.2903], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Reinitialize event listeners
+        document.getElementById('mapStyle').addEventListener('change', updateMapStyle);
+        document.getElementById('overlay').addEventListener('change', updateMapOverlay);
+        
+        showStatus(geotiffStatus, `Error: ${error.message}`, 'error');
+    }
+}        
         async function processGeoTIFF(tiff) {
             try {
                 // Get the image from the GeoTIFF
