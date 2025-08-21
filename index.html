@@ -1,0 +1,2918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCK-NutriField: Mapping Fields to Close Nutrition Gaps</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" />
+    <style>
+        :root {
+            --primary: #2c5f2d;
+            --secondary: #97bc62;
+            --accent: #ffcc00;
+            --light: #f4f7f4;
+            --dark: #1e2b1e;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --info: #3498db;
+            --purple: #9b59b6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 1rem;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .logo-icon {
+            font-size: 2rem;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 2rem 1rem;
+            background-color: white;
+            border-radius: 10px;
+            margin: 1rem 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .hero h2 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        .hero p {
+            max-width: 800px;
+            margin: 0 auto 1.5rem;
+            color: #555;
+        }
+        
+        .cta-button {
+            background-color: var(--accent);
+            color: var(--dark);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+        
+        .sidebar {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .main-content {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            min-height: 500px;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary);
+        }
+        
+        .upload-icon {
+            font-size: 2rem;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }
+        
+        .upload-area:hover .upload-icon {
+            color: var(--primary);
+        }
+        
+        .map-container {
+            height: 400px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f4f7f4, #e4ebe4);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0.5rem 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .recommendation-card {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        
+        .recommendation-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            margin-top: 2rem;
+            color: #666;
+            border-top: 1px solid #eee;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tab-container {
+            margin-bottom: 1.5rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .api-status {
+            padding: 0.5rem;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            display: none;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .processing-info {
+            background-color: #e8f4fd;
+            border-left: 4px solid var(--info);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+        }
+        
+        /* New visualization styles */
+        .visualization-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-weight: 500;
+            color: var(--primary);
+        }
+        
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            border-radius: 3px;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .mini-chart {
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .timeline-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        
+        .visualization-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .viz-tab {
+            padding: 0.5rem 1rem;
+            background: #f1f1f1;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .viz-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .layer-control {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .data-table th {
+            background-color: #f8f9fa;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <span class="logo-icon">🌱</span>
+                <h1>MCK-NutriField</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#dashboard">Dashboard</a></li>
+                    <li><a href="#map">Field Map</a></li>
+                    <li><a href="#nutrition">Nutrition Insights</a></li>
+                    <li><a href="#about">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero">
+            <h2>Mapping Fields to Close Nutrition Gaps</h2>
+            <p>MCK-NutriField combines geospatial field delineation with nutrition vulnerability insights to guide climate-smart agriculture and inclusive nutrition policy.</p>
+            <button class="cta-button" id="startButton">Get Started</button>
+        </section>
+
+        <section class="dashboard" id="dashboard">
+            <div class="sidebar">
+                <div class="form-group">
+                    <label for="countrySelect">Select Country</label>
+                    <select id="countrySelect">
+                        <option value="">Choose a country</option>
+                        <option value="Uganda">Uganda</option>
+                        <option value="Ghana">Ghana</option>
+                        <option value="Benin">Benin</option>
+                        <option value="Senegal">Senegal</option>
+                        <option value="Malawi">Malawi</option>
+                    </select>
+                    <div id="countryStatus" class="api-status"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="regionSelect">Select Region</label>
+                    <select id="regionSelect" disabled>
+                        <option value="">Select country first</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cropSelect">Select Crop</label>
+                    <select id="cropSelect">
+                        <option value="">Choose a crop</option>
+                        <option value="Maize">Maize</option>
+                        <option value="Cassava">Cassava</option>
+                        <option value="Rice">Rice</option>
+                        <option value="Sorghum">Sorghum</option>
+                        <option value="Beans">Beans</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload GeoTIFF File</label>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <p>Drag & drop your .tif file here</p>
+                        <p>or <span style="color: var(--primary);">browse files</span></p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".tif,.tiff" style="display: none;">
+                    <div id="geotiffStatus" class="api-status"></div>
+                </div>
+
+                <div class="form-group">
+                    <button class="cta-button" style="width: 100%;" id="analyzeButton">Analyze Field Boundaries</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="yearSelect">Select Year</label>
+                    <select id="yearSelect">
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                        <option value="2021">2021</option>
+                        <option value="2020">2020</option>
+                        <option value="2019">2019</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <button class="cta-button" style="width: 100%; background-color: var(--info);" id="fetchDataButton">Fetch Nutrition Data</button>
+                    <div id="nutritionStatus" class="api-status"></div>
+                </div>
+
+                <div class="form-group">
+                    <button class="cta-button" style="width: 100%; background-color: var(--secondary);" id="fetchPredictionsButton">Get Crop Predictions</button>
+                    <div id="predictionStatus" class="api-status"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="visualizationType">Visualization Type</label>
+                    <select id="visualizationType">
+                        <option value="chloropleth">Chloropleth Map</option>
+                        <option value="heatmap">Heatmap</option>
+                        <option value="points">Point Data</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dataMetric">Data Metric</label>
+                    <select id="dataMetric">
+                        <option value="yield">Crop Yield</option>
+                        <option value="productivity">Productivity</option>
+                        <option value="nutrition">Nutrition Value</option>
+                        <option value="vulnerability">Vulnerability Index</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <div class="tab-container">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="map">Field Map</div>
+                        <div class="tab" data-tab="nutrition">Nutrition Insights</div>
+                        <div class="tab" data-tab="recommendations">Crop Recommendations</div>
+                        <div class="tab" data-tab="trends">Trends & Analysis</div>
+                        <div class="tab" data-tab="apiData">API Data</div>
+                    </div>
+                </div>
+
+                <div class="tab-content active" id="mapTab">
+                    <div class="visualization-controls">
+                        <div class="control-group">
+                            <label for="mapStyle">Map Style</label>
+                            <select id="mapStyle">
+                                <option value="standard">Standard</option>
+                                <option value="satellite">Satellite</option>
+                                <option value="terrain">Terrain</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="overlay">Data Overlay</label>
+                            <select id="overlay">
+                                <option value="none">None</option>
+                                <option value="productivity">Productivity</option>
+                                <option value="soil">Soil Quality</option>
+                                <option value="rainfall">Rainfall</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="map-container" id="map"></div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Field Area</div>
+                            <div class="stat-value" id="totalArea">0 ha</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Detected Fields</div>
+                            <div class="stat-value" id="fieldCount">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg. Field Size</div>
+                            <div class="stat-value" id="avgSize">0 ha</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Productivity Index</div>
+                            <div class="stat-value" id="productivityIndex">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="nutritionTab">
+                    <h3>Nutrition Vulnerability Analysis</h3>
+                    
+                    <div class="visualization-tabs">
+                        <div class="viz-tab active" data-viz="radar">Nutrition Radar</div>
+                        <div class="viz-tab" data-viz="comparison">Region Comparison</div>
+                        <div class="viz-tab" data-viz="distribution">Distribution</div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="nutritionChart"></canvas>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Nutrient Adequacy</div>
+                            <div class="stat-value" id="nutrientScore">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Climate Exposure</div>
+                            <div class="stat-value" id="climateExposure">Low</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Food Security Risk</div>
+                            <div class="stat-value" id="foodSecurity">Medium</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Vulnerability Index</div>
+                            <div class="stat-value" id="vulnerabilityIndex">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="recommendationsTab">
+                    <h3>Crop Recommendations</h3>
+                    
+                    <div id="recommendationsContainer">
+                        <div class="recommendation-card">
+                            <h4>Select a country and crop to see recommendations</h4>
+                            <p>Data will be fetched from DERPIn API</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="impactChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-grid">
+                        <div class="mini-chart">
+                            <canvas id="yieldChart"></canvas>
+                        </div>
+                        <div class="mini-chart">
+                            <canvas id="costChart"></canvas>
+                        </div>
+                        <div class="mini-chart">
+                            <canvas id="suitabilityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="trendsTab">
+                    <h3>Historical Trends & Analysis</h3>
+                    
+                    <div class="timeline-controls">
+                        <div>
+                            <label for="trendMetric">Metric: </label>
+                            <select id="trendMetric">
+                                <option value="yield">Crop Yield</option>
+                                <option value="production">Production</option>
+                                <option value="area">Cultivated Area</option>
+                                <option value="rainfall">Rainfall</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button class="cta-button" id="downloadData">Download Data</button>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">5-Year Trend</div>
+                            <div class="stat-value" id="fiveYearTrend">+0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Best Performing Region</div>
+                            <div class="stat-value" id="bestRegion">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Forecast Next Year</div>
+                            <div class="stat-value" id="forecast">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Seasonal Pattern</div>
+                            <div class="stat-value" id="seasonalPattern">-</div>
+                        </div>
+                    </div>
+                    
+                    <h4>Regional Data</h4>
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Region</th>
+                                    <th>Yield (tons/ha)</th>
+                                    <th>Growth (%)</th>
+                                    <th>Productivity</th>
+                                    <th>Risk Level</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regionDataBody">
+                                <tr><td colspan="5">Select a country to load data</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="apiDataTab">
+                    <h3>API Response Data</h3>
+                    <div class="form-group">
+                        <label for="apiSelect">Select API to Test</label>
+                        <select id="apiSelect">
+                            <option value="countries">DERPIn - Countries</option>
+                            <option value="predictions">DERPIn - Predictions</option>
+                            <option value="crop-mappings">DERPIn - Crop Mappings</option>
+                            <option value="publications">DERPIn - Publications</option>
+                        </select>
+                    </div>
+                    <button class="cta-button" id="testApiButton">Test API</button>
+                    <div class="form-group">
+                        <label for="apiResponse">API Response</label>
+                        <textarea id="apiResponse" rows="10" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; font-family: monospace;" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>MCK-NutriField - Combining Field Delineation with Nutrition Insights for Climate-Smart Agriculture</p>
+            <p>Data sources: AGWAA, FS-COR, DERPIn API | Built for Derpin Hackathon</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([1.3733, 32.2903], 8); // Default to Uganda
+        
+        // Add base layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Initialize variables
+        let currentCountry = '';
+        let currentCrop = '';
+        let uploadedGeoTIFF = null;
+        let geoTIFFLayers = [];
+        let currentVisualization = null;
+        let regionData = {};
+        
+        // DOM Elements
+        const countrySelect = document.getElementById('countrySelect');
+        const regionSelect = document.getElementById('regionSelect');
+        const cropSelect = document.getElementById('cropSelect');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const fetchDataButton = document.getElementById('fetchDataButton');
+        const fetchPredictionsButton = document.getElementById('fetchPredictionsButton');
+        const startButton = document.getElementById('startButton');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const testApiButton = document.getElementById('testApiButton');
+        const apiSelect = document.getElementById('apiSelect');
+        const apiResponse = document.getElementById('apiResponse');
+        const mapStyleSelect = document.getElementById('mapStyle');
+        const overlaySelect = document.getElementById('overlay');
+        const visualizationTypeSelect = document.getElementById('visualizationType');
+        const dataMetricSelect = document.getElementById('dataMetric');
+        const trendMetricSelect = document.getElementById('trendMetric');
+        const downloadDataButton = document.getElementById('downloadData');
+        const vizTabs = document.querySelectorAll('.viz-tab');
+        
+        // API Status Elements
+        const countryStatus = document.getElementById('countryStatus');
+        const geotiffStatus = document.getElementById('geotiffStatus');
+        const nutritionStatus = document.getElementById('nutritionStatus');
+        const predictionStatus = document.getElementById('predictionStatus');
+
+        // Event Listeners
+        countrySelect.addEventListener('change', (e) => {
+            currentCountry = e.target.value;
+            updateMapView();
+            updateRegionSelect();
+            if (currentCountry) {
+                showStatus(countryStatus, `Selected: ${currentCountry}`, 'success');
+                fetchCountryData(currentCountry);
+                loadRegionData(currentCountry);
+            }
+        });
+        
+        regionSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                updateMapWithRegionData(e.target.value);
+            }
+        });
+        
+        cropSelect.addEventListener('change', (e) => {
+            currentCrop = e.target.value;
+        });
+        
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', handleFileUpload);
+        
+        analyzeButton.addEventListener('click', analyzeFieldBoundaries);
+        
+        fetchDataButton.addEventListener('click', fetchNutritionData);
+        
+        fetchPredictionsButton.addEventListener('click', fetchCropPredictions);
+        
+        startButton.addEventListener('click', () => {
+            document.querySelector('.dashboard').scrollIntoView({ behavior: 'smooth' });
+        });
+        
+        testApiButton.addEventListener('click', testSelectedApi);
+        
+        mapStyleSelect.addEventListener('change', updateMapStyle);
+        
+        overlaySelect.addEventListener('change', updateMapOverlay);
+        
+        visualizationTypeSelect.addEventListener('change', updateVisualization);
+        
+        dataMetricSelect.addEventListener('change', updateVisualization);
+        
+        trendMetricSelect.addEventListener('change', updateTrendChart);
+        
+        downloadDataButton.addEventListener('click', downloadData);
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update active content
+                tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabId}Tab`).classList.add('active');
+                
+                // If trends tab is selected, initialize the trend chart
+                if (tabId === 'trends') {
+                    initializeTrendChart();
+                }
+            });
+        });
+        
+        vizTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const vizType = tab.getAttribute('data-viz');
+                
+                // Update active viz tab
+                vizTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update visualization
+                updateNutritionVisualization(vizType);
+            });
+        });
+        
+        // API Functions
+        function showStatus(element, message, type) {
+            if (element) {
+                element.textContent = message;
+                element.className = `api-status status-${type}`;
+                element.style.display = 'block';
+                
+                // Hide status after 5 seconds
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        async function fetchCountryData(country) {
+            try {
+                showStatus(countryStatus, `Fetching data for ${country}...`, 'success');
+                
+                // Fetch data from DERPIn API
+                const response = await fetch(`https://www.aagwa.org/api/predictions?country=${country}`);
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Country data:', data);
+                
+                showStatus(countryStatus, `Data loaded for ${country}`, 'success');
+                
+                // Update UI with real data
+                updateUIWithCountryData(country, data);
+                
+            } catch (error) {
+                console.error('Error fetching country data:', error);
+                showStatus(countryStatus, `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function fetchNutritionData() {
+            if (!currentCountry) {
+                alert('Please select a country first');
+                return;
+            }
+            
+            try {
+                showStatus(nutritionStatus, `Fetching nutrition data for ${currentCountry}...`, 'success');
+                
+                // In a real implementation, we would fetch from FS-COR API
+                // This is a placeholder since FS-COR doesn't have a public API
+                // We would need to use their data portals or scrape their dashboards
+                
+                // Simulate API call delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // For demo purposes, we'll use mock data that simulates what we'd get from FS-COR
+                const mockNutritionData = {
+                    vitaminA: Math.floor(Math.random() * 30) + 50,
+                    iron: Math.floor(Math.random() * 30) + 50,
+                    zinc: Math.floor(Math.random() * 30) + 50,
+                    protein: Math.floor(Math.random() * 30) + 50,
+                    calories: Math.floor(Math.random() * 30) + 50
+                };
+                
+                showStatus(nutritionStatus, `Nutrition data loaded for ${currentCountry}`, 'success');
+                
+                // Update nutrition tab with data
+                renderNutritionTab(mockNutritionData);
+                
+            } catch (error) {
+                console.error('Error fetching nutrition data:', error);
+                showStatus(nutritionStatus, `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function fetchCropPredictions() {
+            if (!currentCountry || !currentCrop) {
+                alert('Please select a country and crop first');
+                return;
+            }
+            
+            try {
+                showStatus(predictionStatus, `Fetching predictions for ${currentCrop} in ${currentCountry}...`, 'success');
+                
+                // Fetch data from DERPIn API
+                const year = document.getElementById('yearSelect').value;
+                const response = await fetch(`https://www.aagwa.org/api/predictions?country=${currentCountry}&crop=${currentCrop}&year=${year}`);
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Prediction data:', data);
+                
+                showStatus(predictionStatus, `Predictions loaded for ${currentCrop}`, 'success');
+                
+                // Update recommendations tab with data
+                renderRecommendationsTab(data);
+                
+            } catch (error) {
+                console.error('Error fetching prediction data:', error);
+                showStatus(predictionStatus, `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testSelectedApi() {
+            const selectedApi = apiSelect.value;
+            let apiUrl = '';
+            
+            switch(selectedApi) {
+                case 'countries':
+                    apiUrl = 'https://www.aagwa.org/api/countries';
+                    break;
+                case 'predictions':
+                    apiUrl = 'https://www.aagwa.org/api/predictions?country=Uganda&crop=Maize&year=2022';
+                    break;
+                case 'crop-mappings':
+                    apiUrl = 'https://www.aagwa.org/api/crop-mappings?country=Ghana&year=2023&crop=Cassava';
+                    break;
+                case 'publications':
+                    apiUrl = 'https://www.aagwa.org/api/publications?country=Ghana&year=2022&crop=Maize';
+                    break;
+            }
+            
+            try {
+                apiResponse.value = `Fetching from: ${apiUrl}\n\nLoading...`;
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                apiResponse.value = `API: ${apiUrl}\n\nStatus: ${response.status}\n\nResponse:\n${JSON.stringify(data, null, 2)}`;
+                
+            } catch (error) {
+                console.error('Error testing API:', error);
+                apiResponse.value = `Error fetching from: ${apiUrl}\n\n${error.message}`;
+            }
+        }
+        
+        // GeoTIFF Processing Functions
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    showStatus(geotiffStatus, `Loading GeoTIFF file: ${file.name}...`, 'success');
+                    
+                    // Read the file as array buffer
+                    const arrayBuffer = await readFileAsArrayBuffer(file);
+                    
+                    // Parse the GeoTIFF
+                    const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+                    
+                    // Store the parsed GeoTIFF for later processing
+                    uploadedGeoTIFF = tiff;
+                    
+                    // Update UI
+                    uploadArea.innerHTML = `
+                        <div class="upload-icon">✅</div>
+                        <p>${file.name}</p>
+                        <p>Ready for analysis</p>
+                    `;
+                    
+                    showStatus(geotiffStatus, `GeoTIFF file loaded successfully: ${file.name}`, 'success');
+                    
+                } catch (error) {
+                    console.error('Error loading GeoTIFF:', error);
+                    showStatus(geotiffStatus, `Error: Failed to load GeoTIFF file`, 'error');
+                    
+                    uploadArea.innerHTML = `
+                        <div class="upload-icon">❌</div>
+                        <p>${file.name}</p>
+                        <p>Failed to load file</p>
+                    `;
+                }
+            }
+        }
+        
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        async function analyzeFieldBoundaries() {
+            if (!uploadedGeoTIFF) {
+                alert('Please upload a GeoTIFF file first');
+                return;
+            }
+            
+            try {
+                // Show loading state
+                const mapTab = document.getElementById('mapTab');
+                const originalContent = mapTab.innerHTML;
+                mapTab.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Processing GeoTIFF data...</p>
+                    </div>
+                `;
+                
+                // Process the GeoTIFF to detect field boundaries
+                const fieldData = await processGeoTIFF(uploadedGeoTIFF);
+                
+                // Update stats
+                document.getElementById('fieldCount').textContent = fieldData.fieldCount;
+                document.getElementById('totalArea').textContent = `${fieldData.totalArea.toFixed(2)} ha`;
+                document.getElementById('avgSize').textContent = `${fieldData.avgSize.toFixed(2)} ha`;
+                document.getElementById('productivityIndex').textContent = fieldData.productivityIndex.toFixed(1);
+                
+                // Render map with field boundaries
+                renderMapWithFieldData(fieldData);
+                
+                // Show success message
+                showStatus(geotiffStatus, `Field analysis complete! Detected ${fieldData.fieldCount} fields.`, 'success');
+                
+            } catch (error) {
+                console.error('Error analyzing field boundaries:', error);
+                
+                // Show error state
+                const mapTab = document.getElementById('mapTab');
+                mapTab.innerHTML = `
+                    <div class="loading">
+                        <div style="color: var(--danger);">❌ Error processing GeoTIFF file</div>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+                
+                showStatus(geotiffStatus, `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function processGeoTIFF(tiff) {
+            try {
+                // Get the image from the GeoTIFF
+                const image = await tiff.getImage();
+                
+                // Get image data and metadata
+                const width = image.getWidth();
+                const height = image.getHeight();
+                const tileWidth = image.getTileWidth();
+                const tileHeight = image.getTileHeight();
+                
+                // Get the origin and resolution for geo-referencing
+                const [originX, originY] = image.getOrigin();
+                const [xResolution, yResolution] = image.getResolution();
+                
+                // Read the image data
+                const rasters = await image.readRasters();
+                
+                // In a real implementation, we would use computer vision algorithms
+                // to detect field boundaries. For this demo, we'll simulate the process
+                // based on the image dimensions and properties
+                
+                // Calculate simulated field data based on image properties
+                const fieldCount = Math.floor((width * height) / 10000); // Simulated field count
+                const totalArea = (fieldCount * (Math.random() * 5 + 2)); // Simulated total area in hectares
+                const avgSize = totalArea / fieldCount; // Average field size
+                const productivityIndex = Math.random() * 5 + 5; // Simulated productivity index
+                
+                // Get the bounding box for placing field markers
+                const bbox = image.getBoundingBox();
+                
+                return {
+                    fieldCount,
+                    totalArea,
+                    avgSize,
+                    productivityIndex,
+                    bbox,
+                    width,
+                    height,
+                    originX,
+                    originY,
+                    xResolution,
+                    yResolution
+                };
+                
+            } catch (error) {
+                console.error('Error processing GeoTIFF:', error);
+                throw new Error('Failed to process GeoTIFF data');
+            }
+        }
+        
+        function renderMapWithFieldData(fieldData) {
+            // Render the map tab content
+            document.getElementById('mapTab').innerHTML = `
+                <div class="visualization-controls">
+                    <div class="control-group">
+                        <label for="mapStyle">Map Style</label>
+                        <select id="mapStyle">
+                            <option value="standard">Standard</option>
+                            <option value="satellite">Satellite</option>
+                            <option value="terrain">Terrain</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="overlay">Data Overlay</label>
+                        <select id="overlay">
+                            <option value="none">None</option>
+                            <option value="productivity">Productivity</option>
+                            <option value="soil">Soil Quality</option>
+                            <option value="rainfall">Rainfall</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="map-container" id="map"></div>
+                <div class="processing-info">
+                    <h4>GeoTIFF Processing Results</h4>
+                    <p>Image dimensions: ${fieldData.width} × ${fieldData.height} pixels</p>
+                    <p>Resolution: ${fieldData.xResolution.toFixed(6)} × ${fieldData.yResolution.toFixed(6)} units/pixel</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Field Area</div>
+                        <div class="stat-value" id="totalArea">${fieldData.totalArea.toFixed(2)} ha</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Detected Fields</div>
+                        <div class="stat-value" id="fieldCount">${fieldData.fieldCount}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg. Field Size</div>
+                        <div class="stat-value" id="avgSize">${fieldData.avgSize.toFixed(2)} ha</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Productivity Index</div>
+                        <div class="stat-value" id="productivityIndex">${fieldData.productivityIndex.toFixed(1)}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Reinitialize event listeners for the new selects
+            document.getElementById('mapStyle').addEventListener('change', updateMapStyle);
+            document.getElementById('overlay').addEventListener('change', updateMapOverlay);
+            
+            // Reinitialize map
+            const map = L.map('map').setView([1.3733, 32.2903], 8);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add field boundaries based on the processed data
+            // In a real implementation, we would use the actual field boundaries
+            // For this demo, we'll create simulated field boundaries
+            
+            // Calculate center of the bounding box
+            const centerLat = (fieldData.bbox[1] + fieldData.bbox[3]) / 2;
+            const centerLng = (fieldData.bbox[0] + fieldData.bbox[2]) / 2;
+            
+            // Set map view to the center of the GeoTIFF
+            map.setView([centerLat, centerLng], 13);
+            
+            // Add field boundaries (simulated)
+            for (let i = 0; i < Math.min(fieldData.fieldCount, 20); i++) {
+                // Create random field boundaries around the center
+                const lat = centerLat + (Math.random() - 0.5) * 0.02;
+                const lng = centerLng + (Math.random() - 0.5) * 0.02;
+                const size = 0.003 + Math.random() * 0.004;
+                
+                // Create a polygon for the field with color based on productivity
+                const productivity = 0.5 + Math.random() * 0.5; // 0.5 to 1.0
+                const colorIntensity = Math.floor(200 * productivity);
+                const fillColor = `rgb(0, ${colorIntensity}, 0)`;
+                
+                L.polygon([
+                    [lat, lng],
+                    [lat + size, lng],
+                    [lat + size, lng + size],
+                    [lat, lng + size]
+                ], {
+                    color: '#2c5f2d',
+                    fillColor: fillColor,
+                    fillOpacity: 0.6,
+                    weight: 1
+                }).addTo(map).bindPopup(`Field ${i+1}<br>Size: ${(fieldData.avgSize * (0.8 + Math.random() * 0.4)).toFixed(2)} ha<br>Productivity: ${(productivity * 10).toFixed(1)}`);
+            }
+            
+            // Add a marker for the center of the GeoTIFF
+            L.marker([centerLat, centerLng])
+                .addTo(map)
+                .bindPopup('GeoTIFF Center<br>Field boundary detection completed')
+                .openPopup();
+                
+            // Add a legend
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function(map) {
+                const div = L.DomUtil.create('div', 'map-legend');
+                div.innerHTML = `
+                    <h4>Productivity</h4>
+                    <div class="legend-item"><div class="legend-color" style="background-color: rgb(0, 100, 0)"></div> Low</div>
+                    <div class="legend-item"><div class="legend-color" style="background-color: rgb(0, 150, 0)"></div> Medium</div>
+                    <div class="legend-item"><div class="legend-color" style="background-color: rgb(0, 200, 0)"></div> High</div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
+        }
+        
+        // Enhanced Visualization Functions
+        function updateMapStyle() {
+            const style = document.getElementById('mapStyle').value;
+            // In a real implementation, we would change the tile layer based on the selected style
+            console.log(`Map style changed to: ${style}`);
+        }
+        
+        function updateMapOverlay() {
+            const overlay = document.getElementById('overlay').value;
+            // In a real implementation, we would add/remove overlay layers based on selection
+            console.log(`Map overlay changed to: ${overlay}`);
+        }
+        
+        function updateVisualization() {
+            const vizType = document.getElementById('visualizationType').value;
+            const metric = document.getElementById('dataMetric').value;
+            
+            // In a real implementation, we would update the visualization based on these parameters
+            console.log(`Visualization updated: Type=${vizType}, Metric=${metric}`);
+            
+            // For demo purposes, we'll simulate updating the visualization
+            if (currentVisualization) {
+                map.removeLayer(currentVisualization);
+            }
+            
+            // Simulate adding a new visualization layer
+            if (vizType === 'chloropleth' && regionData && Object.keys(regionData).length > 0) {
+                // Create a simulated chloropleth layer
+                const bounds = map.getBounds();
+                const northEast = bounds.getNorthEast();
+                const southWest = bounds.getSouthWest();
+                
+                // Create a rectangle that covers the map view
+                currentVisualization = L.rectangle([
+                    [southWest.lat, southWest.lng],
+                    [northEast.lat, northEast.lng]
+                ], {
+                    color: "#ff7800",
+                    weight: 1,
+                    fillColor: "#ffff00",
+                    fillOpacity: 0.2
+                }).addTo(map);
+                
+                currentVisualization.bindPopup('Simulated chloropleth visualization for ' + metric);
+            } else if (vizType === 'heatmap') {
+                // Create a simulated heatmap
+                const bounds = map.getBounds();
+                const center = bounds.getCenter();
+                
+                // Create some random points for the heatmap
+                const points = [];
+                for (let i = 0; i < 100; i++) {
+                    const lat = center.lat + (Math.random() - 0.5) * 0.1;
+                    const lng = center.lng + (Math.random() - 0.5) * 0.1;
+                    points.push([lat, lng, Math.random()]); // [lat, lng, intensity]
+                }
+                
+                currentVisualization = L.heatLayer(points, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17,
+                    gradient: {0.4: 'blue', 0.65: 'lime', 1: 'red'}
+                }).addTo(map);
+            }
+        }
+        
+        function updateNutritionVisualization(vizType) {
+            const nutritionChart = document.getElementById('nutritionChart');
+            const ctx = nutritionChart.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.nutritionChartInstance) {
+                window.nutritionChartInstance.destroy();
+            }
+            
+            // Mock data for different visualization types
+            if (vizType === 'radar') {
+                window.nutritionChartInstance = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Vitamin A', 'Iron', 'Zinc', 'Protein', 'Calories', 'Folate'],
+                        datasets: [{
+                            label: 'Nutrition Levels',
+                            data: [65, 59, 80, 72, 55, 40],
+                            fill: true,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            pointBackgroundColor: 'rgb(54, 162, 235)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(54, 162, 235)'
+                        }, {
+                            label: 'Recommended Levels',
+                            data: [80, 75, 85, 80, 70, 60],
+                            fill: true,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            pointBackgroundColor: 'rgb(255, 99, 132)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(255, 99, 132)'
+                        }]
+                    },
+                    options: {
+                        elements: {
+                            line: {
+                                borderWidth: 3
+                            }
+                        },
+                        scales: {
+                            r: {
+                                angleLines: {
+                                    display: true
+                                },
+                                suggestedMin: 0,
+                                suggestedMax: 100
+                            }
+                        }
+                    }
+                });
+            } else if (vizType === 'comparison') {
+                window.nutritionChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Vitamin A', 'Iron', 'Zinc', 'Protein', 'Calories'],
+                        datasets: [
+                            {
+                                label: 'Current Region',
+                                data: [65, 59, 80, 72, 55],
+                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            },
+                            {
+                                label: 'National Average',
+                                data: [75, 65, 75, 68, 60],
+                                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Percentage (%)'
+                                }
+                            }
+                        }
+                    }
+                });
+            } else if (vizType === 'distribution') {
+                window.nutritionChartInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Adequate', 'Moderate Deficiency', 'Severe Deficiency'],
+                        datasets: [{
+                            label: 'Nutrition Distribution',
+                            data: [60, 30, 10],
+                            backgroundColor: [
+                                'rgb(54, 162, 235)',
+                                'rgb(255, 205, 86)',
+                                'rgb(255, 99, 132)'
+                            ],
+                            hoverOffset: 4
+                        }]
+                    }
+                });
+            }
+        }
+        
+        function initializeTrendChart() {
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.trendChartInstance) {
+                window.trendChartInstance.destroy();
+            }
+            
+            // Mock data for trend chart
+            const years = [2018, 2019, 2020, 2021, 2022, 2023];
+            const yields = [3.2, 3.5, 3.1, 3.8, 4.2, 4.5];
+            
+            window.trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Crop Yield (tons/ha)',
+                        data: yields,
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Tons per Hectare'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Update trend metrics
+            document.getElementById('fiveYearTrend').textContent = '+40%';
+            document.getElementById('bestRegion').textContent = 'Central Region';
+            document.getElementById('forecast').textContent = '4.8 t/ha';
+            document.getElementById('seasonalPattern').textContent = 'Bimodal';
+        }
+        
+        function updateTrendChart() {
+            const metric = document.getElementById('trendMetric').value;
+            
+            // In a real implementation, we would update the chart data based on the selected metric
+            console.log(`Trend metric updated to: ${metric}`);
+            
+            // For demo purposes, we'll just update the chart title
+            if (window.trendChartInstance) {
+                window.trendChartInstance.data.datasets[0].label = metric.charAt(0).toUpperCase() + metric.slice(1);
+                window.trendChartInstance.update();
+            }
+        }
+        
+        function loadRegionData(country) {
+            // Simulate loading region data for the selected country
+            const regions = {
+                'Uganda': ['Central', 'Eastern', 'Northern', 'Western'],
+                'Ghana': ['Ashanti', 'Brong-Ahafo', 'Central', 'Eastern', 'Greater Accra', 'Northern', 'Upper East', 'Upper West', 'Volta', 'Western'],
+                'Benin': ['Alibori', 'Atakora', 'Atlantique', 'Borgou', 'Collines', 'Donga', 'Kouffo', 'Littoral', 'Mono', 'Ouémé', 'Plateau', 'Zou'],
+                'Senegal': ['Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'],
+                'Malawi': ['Central', 'Northern', 'Southern']
+            };
+            
+            // Store region data for visualization
+            regionData = {};
+            if (regions[country]) {
+                regions[country].forEach(region => {
+                    regionData[region] = {
+                        yield: (Math.random() * 3 + 2).toFixed(1),
+                        productivity: (Math.random() * 2 + 3).toFixed(1),
+                        growth: (Math.random() * 20 - 5).toFixed(1),
+                        risk: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)]
+                    };
+                });
+            }
+            
+            // Update region data table
+            updateRegionDataTable();
+        }
+        
+        function updateRegionSelect() {
+            const country = document.getElementById('countrySelect').value;
+            const regionSelect = document.getElementById('regionSelect');
+            
+            // Define regions for each country
+            const regions = {
+                'Uganda': ['Central', 'Eastern', 'Northern', 'Western'],
+                'Ghana': ['Ashanti', 'Brong-Ahafo', 'Central', 'Eastern', 'Greater Accra', 'Northern', 'Upper East', 'Upper West', 'Volta', 'Western'],
+                'Benin': ['Alibori', 'Atakora', 'Atlantique', 'Borgou', 'Collines', 'Donga', 'Kouffo', 'Littoral', 'Mono', 'Ouémé', 'Plateau', 'Zou'],
+                'Senegal': ['Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'],
+                'Malawi': ['Central', 'Northern', 'Southern']
+            };
+            
+            // Clear existing options
+            regionSelect.innerHTML = '';
+            
+            if (country && regions[country]) {
+                // Enable the select and add options
+                regionSelect.disabled = false;
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select a region';
+                regionSelect.appendChild(defaultOption);
+                
+                // Add region options
+                regions[country].forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region;
+                    option.textContent = region;
+                    regionSelect.appendChild(option);
+                });
+            } else {
+                // Disable the select and add a placeholder
+                regionSelect.disabled = true;
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Select country first';
+                regionSelect.appendChild(option);
+            }
+        }
+        
+        function updateRegionDataTable() {
+            const tableBody = document.getElementById('regionDataBody');
+            tableBody.innerHTML = '';
+            
+            if (Object.keys(regionData).length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="5">No region data available</td>`;
+                tableBody.appendChild(row);
+                return;
+            }
+            
+            // Add rows for each region
+            for (const [region, data] of Object.entries(regionData)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${region}</td>
+                    <td>${data.yield}</td>
+                    <td>${data.growth}%</td>
+                    <td>${data.productivity}</td>
+                    <td>${data.risk}</td>
+                `;
+                tableBody.appendChild(row);
+            }
+        }
+        
+        function updateMapWithRegionData(region) {
+            // In a real implementation, we would highlight the selected region on the map
+            console.log(`Region selected: ${region}`);
+            
+            // For demo purposes, we'll just show an alert
+            alert(`Region data for ${region} would be displayed on the map in a real implementation`);
+        }
+        
+        function downloadData() {
+            // In a real implementation, we would generate and download a CSV or JSON file
+            alert('Data download functionality would be implemented here');
+        }
+        
+        // UI Update Functions
+        function updateUIWithCountryData(country, data) {
+            // Update stats with data from API response
+            document.getElementById('fieldCount').textContent = data.length || '0';
+            
+            // In a real implementation, we would calculate these from the actual data
+            document.getElementById('totalArea').textContent = data.length ? `${(data.length * 5.2).toFixed(1)} ha` : '0 ha';
+            document.getElementById('avgSize').textContent = data.length ? '5.2 ha' : '0 ha';
+            
+            // Add markers to map based on data
+            updateMapWithData(data);
+        }
+        
+        function updateMapWithData(data) {
+            // Clear existing markers
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Add markers for each data point (simulated)
+            if (data && data.length > 0) {
+                // Use actual data if available
+                data.forEach((item, index) => {
+                    // Create a random location near the country center
+                    const countryCoordinates = {
+                        'Uganda': [1.3733, 32.2903],
+                        'Ghana': [7.9465, -1.0232],
+                        'Benin': [9.3077, 2.3158],
+                        'Senegal': [14.4974, -14.4524],
+                        'Malawi': [-13.2543, 34.3015]
+                    };
+                    
+                    if (countryCoordinates[currentCountry]) {
+                        const [lat, lng] = countryCoordinates[currentCountry];
+                        const markerLat = lat + (Math.random() - 0.5) * 0.5;
+                        const markerLng = lng + (Math.random() - 0.5) * 0.5;
+                        
+                        L.marker([markerLat, markerLng])
+                            .addTo(map)
+                            .bindPopup(`<b>Field ${index + 1}</b><br>Crop: ${currentCrop || 'Unknown'}<br>Data available`);
+                    }
+                });
+            } else {
+                // Add a default marker if no data
+                const countryCoordinates = {
+                    'Uganda': [1.3733, 32.2903],
+                    'Ghana': [7.9465, -1.0232],
+                    'Benin': [9.3077, 2.3158],
+                    'Senegal': [14.4974, -14.4524],
+                    'Malawi': [-13.2543, 34.3015]
+                };
+                
+                if (countryCoordinates[currentCountry]) {
+                    L.marker(countryCoordinates[currentCountry])
+                        .addTo(map)
+                        .bindPopup(`<b>${currentCountry}</b><br>No field data available`);
+                }
+            }
+        }
+        
+        function renderNutritionTab(nutritionData) {
+            // Render the nutrition tab content
+            document.getElementById('nutritionTab').innerHTML = `
+                <h3>Nutrition Vulnerability Analysis for ${currentCountry}</h3>
+                
+                <div class="visualization-tabs">
+                    <div class="viz-tab active" data-viz="radar">Nutrition Radar</div>
+                    <div class="viz-tab" data-viz="comparison">Region Comparison</div>
+                    <div class="viz-tab" data-viz="distribution">Distribution</div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="nutritionChart"></canvas>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Nutrient Adequacy</div>
+                        <div class="stat-value" id="nutrientScore">${Math.round((nutritionData.vitaminA + nutritionData.iron + nutritionData.zinc + nutritionData.protein) / 4)}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Climate Exposure</div>
+                        <div class="stat-value" id="climateExposure">${nutritionData.calories > 70 ? 'Low' : nutritionData.calories > 50 ? 'Medium' : 'High'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Food Security Risk</div>
+                        <div class="stat-value" id="foodSecurity">${nutritionData.calories > 80 ? 'Low' : nutritionData.calories > 60 ? 'Medium' : 'High'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Vulnerability Index</div>
+                        <div class="stat-value" id="vulnerabilityIndex">${Math.floor(Math.random() * 40 + 30)}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Reinitialize viz tab event listeners
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const vizType = tab.getAttribute('data-viz');
+                    
+                    // Update active viz tab
+                    document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update visualization
+                    updateNutritionVisualization(vizType);
+                });
+            });
+            
+            // Render nutrition chart
+            updateNutritionVisualization('radar');
+        }
+        
+        function renderRecommendationsTab(data) {
+            const recommendationsContainer = document.getElementById('recommendationsContainer');
+            
+            if (data && data.length > 0) {
+                // Use actual data from API response
+                recommendationsContainer.innerHTML = data.map(item => `
+                    <div class="recommendation-card">
+                        <h4>${item.crop || currentCrop}</h4>
+                        <p>Feature: ${item.feature || 'Production'}</p>
+                        <p>Year: ${item.year || '2023'}</p>
+                        ${item.url ? `<p>Data URL: <a href="${item.url}" target="_blank">${item.url}</a></p>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                // Show mock recommendations if no data available
+                recommendationsContainer.innerHTML = `
+                    <div class="recommendation-card">
+                        <h4>🌽 ${currentCrop}</h4>
+                        <p>Predicted yield: 3.2 tons/ha. Suitable for 78% of your fields. Will improve Vitamin A availability by 15%.</p>
+                    </div>
+                    
+                    <div class="recommendation-card">
+                        <h4>🥔 Cassava</h4>
+                        <p>Predicted yield: 8.5 tons/ha. Suitable for 92% of your fields. Drought resistant and improves calorie availability.</p>
+                    </div>
+                    
+                    <div class="recommendation-card">
+                        <h4>🥜 Beans</h4>
+                        <p>Predicted yield: 1.8 tons/ha. Suitable for 65% of your fields. Will significantly improve protein and iron availability.</p>
+                    </div>
+                `;
+            }
+            
+            // Initialize mini charts
+            initMiniCharts();
+            
+            // Show the recommendations tab
+            tabs.forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-tab="recommendations"]').classList.add('active');
+            
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById('recommendationsTab').classList.add('active');
+        }
+        
+        function initMiniCharts() {
+            // Initialize yield chart
+            const yieldCtx = document.getElementById('yieldChart').getContext('2d');
+            new Chart(yieldCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Maize', 'Cassava', 'Beans', 'Rice'],
+                    datasets: [{
+                        label: 'Yield (tons/ha)',
+                        data: [3.2, 8.5, 1.8, 2.5],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(75, 192, 192, 0.5)',
+                            'rgba(255, 159, 64, 0.5)',
+                            'rgba(153, 102, 255, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgb(54, 162, 235)',
+                            'rgb(75, 192, 192)',
+                            'rgb(255, 159, 64)',
+                            'rgb(153, 102, 255)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Yield Comparison'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Initialize cost chart
+            const costCtx = document.getElementById('costChart').getContext('2d');
+            new Chart(costCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Labor', 'Seeds', 'Fertilizer', 'Equipment'],
+                    datasets: [{
+                        label: 'Cost Distribution',
+                        data: [40, 25, 20, 15],
+                        backgroundColor: [
+                            'rgb(255, 99, 132)',
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)',
+                            'rgb(75, 192, 192)'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Cost Distribution'
+                        }
+                    }
+                }
+            });
+            
+            // Initialize suitability chart
+            const suitabilityCtx = document.getElementById('suitabilityChart').getContext('2d');
+            new Chart(suitabilityCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Soil', 'Climate', 'Water', 'Economic'],
+                    datasets: [{
+                        label: 'Suitability Score',
+                        data: [85, 70, 65, 80],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 205, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Suitability Analysis'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Original Functions (kept for compatibility)
+                // Original Functions (kept for compatibility)
+            function updateMapView() {
+                // Update map view based on selected country
+                const countryCoordinates = {
+                    'Uganda': [1.3733, 32.2903],
+                    'Ghana': [7.9465, -1.0232],
+                    'Benin': [9.3077, 2.3158],
+                    'Senegal': [14.4974, -14.4524],
+                    'Malawi': [-13.2543, 34.3015]
+                };
+                
+                if (countryCoordinates[currentCountry]) {
+                    map.setView(countryCoordinates[currentCountry], 7);
+                }
+            }
+            // ... (existing code continues until the end of the updateMapView function)
+
+        // Enhanced Visualization Functions
+        function updateMapStyle() {
+            const style = document.getElementById('mapStyle').value;
+            
+            // Remove existing base layer
+            map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Add new base layer based on selection
+            let tileLayer;
+            switch(style) {
+                case 'satellite':
+                    tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                    });
+                    break;
+                case 'terrain':
+                    tileLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+                    });
+                    break;
+                default:
+                    tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    });
+            }
+            
+            tileLayer.addTo(map);
+        }
+        
+        function updateMapOverlay() {
+            const overlay = document.getElementById('overlay').value;
+            
+            // Remove existing overlay
+            if (window.currentOverlay) {
+                map.removeLayer(window.currentOverlay);
+            }
+            
+            // Add new overlay based on selection
+            switch(overlay) {
+                case 'productivity':
+                    // Simulate productivity overlay with random data
+                    const productivityData = generateRandomGridData(map.getBounds(), 50);
+                    window.currentOverlay = L.heatLayer(productivityData, {
+                        radius: 25,
+                        blur: 15,
+                        maxZoom: 17,
+                        gradient: {0.1: 'blue', 0.5: 'lime', 1: 'red'}
+                    }).addTo(map);
+                    break;
+                    
+                case 'soil':
+                    // Simulate soil quality overlay
+                    const soilData = generateRandomGridData(map.getBounds(), 50, 0.3, 0.9);
+                    window.currentOverlay = L.heatLayer(soilData, {
+                        radius: 20,
+                        blur: 10,
+                        maxZoom: 17,
+                        gradient: {0.3: 'red', 0.6: 'yellow', 0.9: 'green'}
+                    }).addTo(map);
+                    break;
+                    
+                case 'rainfall':
+                    // Simulate rainfall overlay
+                    const rainfallData = generateRandomGridData(map.getBounds(), 50, 0, 1);
+                    window.currentOverlay = L.heatLayer(rainfallData, {
+                        radius: 30,
+                        blur: 20,
+                        maxZoom: 17,
+                        gradient: {0: 'white', 0.3: 'blue', 0.7: 'darkblue'}
+                    }).addTo(map);
+                    break;
+            }
+        }
+        
+        function generateRandomGridData(bounds, pointCount, minIntensity = 0, maxIntensity = 1) {
+            const data = [];
+            const northEast = bounds.getNorthEast();
+            const southWest = bounds.getSouthWest();
+            
+            for (let i = 0; i < pointCount; i++) {
+                const lat = southWest.lat + Math.random() * (northEast.lat - southWest.lat);
+                const lng = southWest.lng + Math.random() * (northEast.lng - southWest.lng);
+                const intensity = minIntensity + Math.random() * (maxIntensity - minIntensity);
+                
+                data.push([lat, lng, intensity]);
+            }
+            
+            return data;
+        }
+        
+        function updateVisualization() {
+            const vizType = document.getElementById('visualizationType').value;
+            const metric = document.getElementById('dataMetric').value;
+            
+            // Remove existing visualization
+            if (currentVisualization) {
+                map.removeLayer(currentVisualization);
+                currentVisualization = null;
+            }
+            
+            // Add new visualization based on selection
+            switch(vizType) {
+                case 'chloropleth':
+                    createChloroplethMap(metric);
+                    break;
+                    
+                case 'heatmap':
+                    createHeatmap(metric);
+                    break;
+                    
+                case 'points':
+                    createPointVisualization(metric);
+                    break;
+            }
+        }
+        
+        function createChloroplethMap(metric) {
+            // In a real implementation, we would use actual region boundaries
+            // For this demo, we'll create simulated region boundaries
+            
+            const bounds = map.getBounds();
+            const center = bounds.getCenter();
+            
+            // Create 5 simulated regions around the center
+            for (let i = 0; i < 5; i++) {
+                const regionCenter = [
+                    center.lat + (Math.random() - 0.5) * 0.5,
+                    center.lng + (Math.random() - 0.5) * 0.5
+                ];
+                
+                // Create a polygon for the region
+                const polygonPoints = [];
+                for (let j = 0; j < 5; j++) {
+                    const angle = (j / 5) * 2 * Math.PI;
+                    const distance = 0.05 + Math.random() * 0.03;
+                    polygonPoints.push([
+                        regionCenter[0] + Math.sin(angle) * distance,
+                        regionCenter[1] + Math.cos(angle) * distance
+                    ]);
+                }
+                
+                // Close the polygon
+                polygonPoints.push(polygonPoints[0]);
+                
+                // Determine color based on metric value
+                const value = Math.random();
+                let color;
+                
+                switch(metric) {
+                    case 'yield':
+                        color = value > 0.7 ? '#006837' : value > 0.4 ? '#31a354' : '#78c679';
+                        break;
+                    case 'productivity':
+                        color = value > 0.7 ? '#084081' : value > 0.4 ? '#0868ac' : '#2b8cbe';
+                        break;
+                    case 'nutrition':
+                        color = value > 0.7 ? '#8c2d04' : value > 0.4 ? '#cc4c02' : '#ec7014';
+                        break;
+                    case 'vulnerability':
+                        color = value > 0.7 ? '#bd0026' : value > 0.4 ? '#e31a1c' : '#fc4e2a';
+                        break;
+                }
+                
+                // Create the polygon
+                const polygon = L.polygon(polygonPoints, {
+                    color: '#fff',
+                    weight: 1,
+                    fillColor: color,
+                    fillOpacity: 0.7
+                }).addTo(map);
+                
+                // Add popup with information
+                polygon.bindPopup(`
+                    <strong>Region ${i+1}</strong><br>
+                    ${metric}: ${(value * 100).toFixed(1)}<br>
+                    ${getMetricUnit(metric)}
+                `);
+                
+                currentVisualization = polygon;
+            }
+        }
+        
+        function createHeatmap(metric) {
+            const bounds = map.getBounds();
+            const data = generateRandomGridData(bounds, 100);
+            
+            // Configure heatmap based on metric
+            let heatmapConfig = {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17
+            };
+            
+            switch(metric) {
+                case 'yield':
+                    heatmapConfig.gradient = {0.1: 'blue', 0.5: 'lime', 1: 'green'};
+                    break;
+                case 'productivity':
+                    heatmapConfig.gradient = {0.1: 'white', 0.5: 'yellow', 1: 'red'};
+                    break;
+                case 'nutrition':
+                    heatmapConfig.gradient = {0.1: 'white', 0.5: 'orange', 1: 'darkorange'};
+                    break;
+                case 'vulnerability':
+                    heatmapConfig.gradient = {0.1: 'green', 0.5: 'yellow', 1: 'red'};
+                    break;
+            }
+            
+            currentVisualization = L.heatLayer(data, heatmapConfig).addTo(map);
+        }
+        
+        function createPointVisualization(metric) {
+            const bounds = map.getBounds();
+            const pointCount = 20;
+            
+            for (let i = 0; i < pointCount; i++) {
+                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+                const value = Math.random();
+                
+                // Determine marker color based on value and metric
+                let color;
+                if (metric === 'vulnerability') {
+                    color = value > 0.7 ? 'red' : value > 0.4 ? 'orange' : 'green';
+                } else {
+                    color = value > 0.7 ? 'green' : value > 0.4 ? 'blue' : 'gray';
+                }
+                
+                // Create a circle marker
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: color,
+                    color: '#000',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                // Add popup with information
+                marker.bindPopup(`
+                    <strong>Data Point ${i+1}</strong><br>
+                    ${metric}: ${(value * 100).toFixed(1)}<br>
+                    ${getMetricUnit(metric)}
+                `);
+                
+                currentVisualization = marker;
+            }
+        }
+        
+        function getMetricUnit(metric) {
+            switch(metric) {
+                case 'yield': return 'tons/ha';
+                case 'productivity': return 'index';
+                case 'nutrition': return 'score';
+                case 'vulnerability': return 'index';
+                default: return '';
+            }
+        }
+        
+        function updateNutritionVisualization(vizType) {
+            const nutritionChart = document.getElementById('nutritionChart');
+            const ctx = nutritionChart.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.nutritionChartInstance) {
+                window.nutritionChartInstance.destroy();
+            }
+            
+            // Get current country for context
+            const country = currentCountry || 'Selected Region';
+            
+            // Create different visualizations based on type
+            switch(vizType) {
+                case 'radar':
+                    createNutritionRadarChart(ctx, country);
+                    break;
+                case 'comparison':
+                    createNutritionComparisonChart(ctx, country);
+                    break;
+                case 'distribution':
+                    createNutritionDistributionChart(ctx, country);
+                    break;
+            }
+        }
+        
+        function createNutritionRadarChart(ctx, country) {
+            // Sample nutrition data
+            const nutritionData = {
+                labels: ['Vitamin A', 'Iron', 'Zinc', 'Protein', 'Calories', 'Folate'],
+                current: [65, 59, 80, 72, 55, 40],
+                recommended: [80, 75, 85, 80, 70, 60],
+                regionalAvg: [70, 65, 75, 68, 60, 50]
+            };
+            
+            window.nutritionChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: nutritionData.labels,
+                    datasets: [
+                        {
+                            label: `${country} Current`,
+                            data: nutritionData.current,
+                            fill: true,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            pointBackgroundColor: 'rgb(54, 162, 235)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(54, 162, 235)'
+                        },
+                        {
+                            label: 'Recommended Levels',
+                            data: nutritionData.recommended,
+                            fill: true,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            pointBackgroundColor: 'rgb(255, 99, 132)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(255, 99, 132)'
+                        },
+                        {
+                            label: 'Regional Average',
+                            data: nutritionData.regionalAvg,
+                            fill: true,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgb(75, 192, 192)',
+                            pointBackgroundColor: 'rgb(75, 192, 192)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(75, 192, 192)'
+                        }
+                    ]
+                },
+                options: {
+                    elements: {
+                        line: {
+                            borderWidth: 3
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Nutrition Adequacy Radar Chart'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createNutritionComparisonChart(ctx, country) {
+            window.nutritionChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Vitamin A', 'Iron', 'Zinc', 'Protein', 'Calories'],
+                    datasets: [
+                        {
+                            label: `${country} Current`,
+                            data: [65, 59, 80, 72, 55],
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        },
+                        {
+                            label: 'National Average',
+                            data: [75, 65, 75, 68, 60],
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        },
+                        {
+                            label: 'Recommended',
+                            data: [80, 75, 85, 80, 70],
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Nutrition Comparison Across Regions'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createNutritionDistributionChart(ctx, country) {
+            window.nutritionChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Adequate', 'Moderate Deficiency', 'Severe Deficiency'],
+                    datasets: [{
+                        label: 'Nutrition Distribution',
+                        data: [60, 30, 10],
+                        backgroundColor: [
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)',
+                            'rgb(255, 99, 132)'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Nutrition Status Distribution'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function initializeTrendChart() {
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.trendChartInstance) {
+                window.trendChartInstance.destroy();
+            }
+            
+            // Generate time series data
+            const years = [2018, 2019, 2020, 2021, 2022, 2023];
+            const yields = [3.2, 3.5, 3.1, 3.8, 4.2, 4.5];
+            const rainfall = [1200, 1100, 900, 1300, 1150, 1250];
+            const production = [120, 130, 115, 145, 160, 180];
+            const area = [35, 37, 32, 38, 38, 40];
+            
+            window.trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Crop Yield (tons/ha)',
+                        data: yields,
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        yAxisID: 'y'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Tons per Hectare'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: false,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Historical Crop Yield Trends'
+                        }
+                    }
+                }
+            });
+            
+            // Update trend metrics
+            document.getElementById('fiveYearTrend').textContent = '+40%';
+            document.getElementById('bestRegion').textContent = 'Central Region';
+            document.getElementById('forecast').textContent = '4.8 t/ha';
+            document.getElementById('seasonalPattern').textContent = 'Bimodal';
+        }
+        
+                function updateTrendChart() {
+            const metric = document.getElementById('trendMetric').value;
+            
+            if (!window.trendChartInstance) return;
+            
+            // Update chart data based on selected metric
+            const years = [2018, 2019, 2020, 2021, 2022, 2023];
+            let data, label, unit;
+            
+            switch(metric) {
+                case 'yield':
+                    data = [3.2, 3.5, 3.1, 3.8, 4.2, 4.5];
+                    label = 'Crop Yield';
+                    unit = 'tons/ha';
+                    break;
+                case 'production':
+                    data = [120, 130, 115, 145, 160, 180];
+                    label = 'Production';
+                    unit = 'thousand tons';
+                    break;
+                case 'area':
+                    data = [35, 37, 32, 38, 38, 40];
+                    label = 'Cultivated Area';
+                    unit = 'thousand hectares';
+                    break;
+                case 'rainfall':
+                    data = [1200, 1100, 900, 1300, 1150, 1250];
+                    label = 'Rainfall';
+                    unit = 'mm/year';
+                    break;
+            }
+            
+            window.trendChartInstance.data.datasets = [{
+                label: `${label} (${unit})`,
+                data: data,
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }];
+            
+            window.trendChartInstance.options.plugins.title.text = `Historical ${label} Trends`;
+            window.trendChartInstance.options.scales.y.title.text = unit;
+            
+            window.trendChartInstance.update();
+        }
+        
+        function loadRegionData(country) {
+            // Simulate loading region data for the selected country
+            const regions = {
+                'Uganda': ['Central', 'Eastern', 'Northern', 'Western'],
+                'Ghana': ['Ashanti', 'Brong-Ahafo', 'Central', 'Eastern', 'Greater Accra', 'Northern', 'Upper East', 'Upper West', 'Volta', 'Western'],
+                'Benin': ['Alibori', 'Atakora', 'Atlantique', 'Borgou', 'Collines', 'Donga', 'Kouffo', 'Littoral', 'Mono', 'Ouémé', 'Plateau', 'Zou'],
+                'Senegal': ['Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'],
+                'Malawi': ['Central', 'Northern', 'Southern']
+            };
+            
+            // Store region data for visualization
+            regionData = {};
+            if (regions[country]) {
+                regions[country].forEach(region => {
+                    regionData[region] = {
+                        yield: (Math.random() * 3 + 2).toFixed(1),
+                        productivity: (Math.random() * 2 + 3).toFixed(1),
+                        growth: (Math.random() * 20 - 5).toFixed(1),
+                        risk: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)]
+                    };
+                });
+            }
+            
+            // Update region data table
+            updateRegionDataTable();
+        }
+        
+        function updateRegionSelect() {
+            const country = document.getElementById('countrySelect').value;
+            const regionSelect = document.getElementById('regionSelect');
+            
+            // Define regions for each country
+            const regions = {
+                'Uganda': ['Central', 'Eastern', 'Northern', 'Western'],
+                'Ghana': ['Ashanti', 'Brong-Ahafo', 'Central', 'Eastern', 'Greater Accra', 'Northern', 'Upper East', 'Upper West', 'Volta', 'Western'],
+                'Benin': ['Alibori', 'Atakora', 'Atlantique', 'Borgou', 'Collines', 'Donga', 'Kouffo', 'Littoral', 'Mono', 'Ouémé', 'Plateau', 'Zou'],
+                'Senegal': ['Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'],
+                'Malawi': ['Central', 'Northern', 'Southern']
+            };
+            
+            // Clear existing options
+            regionSelect.innerHTML = '';
+            
+            if (country && regions[country]) {
+                // Enable the select and add options
+                regionSelect.disabled = false;
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select a region';
+                regionSelect.appendChild(defaultOption);
+                
+                // Add region options
+                regions[country].forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region;
+                    option.textContent = region;
+                    regionSelect.appendChild(option);
+                });
+            } else {
+                // Disable the select and add a placeholder
+                regionSelect.disabled = true;
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Select country first';
+                regionSelect.appendChild(option);
+            }
+        }
+        
+        function updateRegionDataTable() {
+            const tableBody = document.getElementById('regionDataBody');
+            tableBody.innerHTML = '';
+            
+            if (Object.keys(regionData).length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="5">No region data available</td>`;
+                tableBody.appendChild(row);
+                return;
+            }
+            
+            // Add rows for each region
+            for (const [region, data] of Object.entries(regionData)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${region}</td>
+                    <td>${data.yield}</td>
+                    <td>${data.growth}%</td>
+                    <td>${data.productivity}</td>
+                    <td>${data.risk}</td>
+                `;
+                tableBody.appendChild(row);
+            }
+        }
+        
+        function updateMapWithRegionData(region) {
+            // In a real implementation, we would highlight the selected region on the map
+            console.log(`Region selected: ${region}`);
+            
+            // For demo purposes, we'll just show an alert
+            alert(`Region data for ${region} would be displayed on the map in a real implementation`);
+        }
+        
+        function downloadData() {
+            // In a real implementation, we would generate and download a CSV or JSON file
+            alert('Data download functionality would be implemented here');
+        }
+        
+        // UI Update Functions
+        function updateUIWithCountryData(country, data) {
+            // Update stats with data from API response
+            document.getElementById('fieldCount').textContent = data.length || '0';
+            
+            // In a real implementation, we would calculate these from the actual data
+            document.getElementById('totalArea').textContent = data.length ? `${(data.length * 5.2).toFixed(1)} ha` : '0 ha';
+            document.getElementById('avgSize').textContent = data.length ? '5.2 ha' : '0 ha';
+            
+            // Add markers to map based on data
+            updateMapWithData(data);
+        }
+        
+        function updateMapWithData(data) {
+            // Clear existing markers
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Add markers for each data point (simulated)
+            if (data && data.length > 0) {
+                // Use actual data if available
+                data.forEach((item, index) => {
+                    // Create a random location near the country center
+                    const countryCoordinates = {
+                        'Uganda': [1.3733, 32.2903],
+                        'Ghana': [7.9465, -1.0232],
+                        'Benin': [9.3077, 2.3158],
+                        'Senegal': [14.4974, -14.4524],
+                        'Malawi': [-13.2543, 34.3015]
+                    };
+                    
+                    if (countryCoordinates[currentCountry]) {
+                        const [lat, lng] = countryCoordinates[currentCountry];
+                        const markerLat = lat + (Math.random() - 0.5) * 0.5;
+                        const markerLng = lng + (Math.random() - 0.5) * 0.5;
+                        
+                        L.marker([markerLat, markerLng])
+                            .addTo(map)
+                            .bindPopup(`<b>Field ${index + 1}</b><br>Crop: ${currentCrop || 'Unknown'}<br>Data available`);
+                    }
+                });
+            } else {
+                // Add a default marker if no data
+                const countryCoordinates = {
+                    'Uganda': [1.3733, 32.2903],
+                    'Ghana': [7.9465, -1.0232],
+                    'Benin': [9.3077, 2.3158],
+                    'Senegal': [14.4974, -14.4524],
+                    'Malawi': [-13.2543, 34.3015]
+                };
+                
+                if (countryCoordinates[currentCountry]) {
+                    L.marker(countryCoordinates[currentCountry])
+                        .addTo(map)
+                        .bindPopup(`<b>${currentCountry}</b><br>No field data available`);
+                }
+            }
+        }
+        
+        function renderNutritionTab(nutritionData) {
+            // Render the nutrition tab content
+            document.getElementById('nutritionTab').innerHTML = `
+                <h3>Nutrition Vulnerability Analysis for ${currentCountry}</h3>
+                
+                <div class="visualization-tabs">
+                    <div class="viz-tab active" data-viz="radar">Nutrition Radar</div>
+                    <div class="viz-tab" data-viz="comparison">Region Comparison</div>
+                    <div class="viz-tab" data-viz="distribution">Distribution</div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="nutritionChart"></canvas>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Nutrient Adequacy</div>
+                        <div class="stat-value" id="nutrientScore">${Math.round((nutritionData.vitaminA + nutritionData.iron + nutritionData.zinc + nutritionData.protein) / 4)}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Climate Exposure</div>
+                        <div class="stat-value" id="climateExposure">${nutritionData.calories > 70 ? 'Low' : nutritionData.calories > 50 ? 'Medium' : 'High'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Food Security Risk</div>
+                        <div class="stat-value" id="foodSecurity">${nutritionData.calories > 80 ? 'Low' : nutritionData.calories > 60 ? 'Medium' : 'High'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Vulnerability Index</div>
+                        <div class="stat-value" id="vulnerabilityIndex">${Math.floor(Math.random() * 40 + 30)}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Reinitialize viz tab event listeners
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const vizType = tab.getAttribute('data-viz');
+                    
+                    // Update active viz tab
+                    document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update visualization
+                    updateNutritionVisualization(vizType);
+                });
+            });
+            
+            // Render nutrition chart
+            updateNutritionVisualization('radar');
+        }
+        
+        function renderRecommendationsTab(data) {
+            const recommendationsContainer = document.getElementById('recommendationsContainer');
+            
+            if (data && data.length > 0) {
+                // Use actual data from API response
+                recommendationsContainer.innerHTML = data.map(item => `
+                    <div class="recommendation-card">
+                        <h4>${item.crop || currentCrop}</h4>
+                        <p>Feature: ${item.feature || 'Production'}</p>
+                        <p>Year: ${item.year || '2023'}</p>
+                        ${item.url ? `<p>Data URL: <a href="${item.url}" target="_blank">${item.url}</a></p>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                // Show mock recommendations if no data available
+                recommendationsContainer.innerHTML = `
+                    <div class="recommendation-card">
+                        <h4>🌽 ${currentCrop}</h4>
+                        <p>Predicted yield: 3.2 tons/ha. Suitable for 78% of your fields. Will improve Vitamin A availability by 15%.</p>
+                    </div>
+                    
+                    <div class="recommendation-card">
+                        <h4>🥔 Cassava</h4>
+                        <p>Predicted yield: 8.5 tons/ha. Suitable for 92% of your fields. Drought resistant and improves calorie availability.</p>
+                    </div>
+                    
+                    <div class="recommendation-card">
+                        <h4>🥜 Beans</h4>
+                        <p>Predicted yield: 1.8 tons/ha. Suitable for 65% of your fields. Will significantly improve protein and iron availability.</p>
+                    </div>
+                `;
+            }
+            
+            // Initialize mini charts
+            initMiniCharts();
+            
+            // Show the recommendations tab
+            tabs.forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-tab="recommendations"]').classList.add('active');
+            
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById('recommendationsTab').classList.add('active');
+        }
+        
+        function initMiniCharts() {
+            // Initialize yield chart
+            const yieldCtx = document.getElementById('yieldChart').getContext('2d');
+            new Chart(yieldCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Maize', 'Cassava', 'Beans', 'Rice'],
+                    datasets: [{
+                        label: 'Yield (tons/ha)',
+                        data: [3.2, 8.5, 1.8, 2.5],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(75, 192, 192, 0.5)',
+                            'rgba(255, 159, 64, 0.5)',
+                            'rgba(153, 102, 255, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgb(54, 162, 235)',
+                            'rgb(75, 192, 192)',
+                            'rgb(255, 159, 64)',
+                            'rgb(153, 102, 255)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Yield Comparison'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Initialize cost chart
+            const costCtx = document.getElementById('costChart').getContext('2d');
+            new Chart(costCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Labor', 'Seeds', 'Fertilizer', 'Equipment'],
+                    datasets: [{
+                        label: 'Cost Distribution',
+                        data: [40, 25, 20, 15],
+                        backgroundColor: [
+                            'rgb(255, 99, 132)',
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)',
+                            'rgb(75, 192, 192)'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Cost Distribution'
+                        }
+                    }
+                }
+            });
+            
+            // Initialize suitability chart
+            const suitabilityCtx = document.getElementById('suitabilityChart').getContext('2d');
+            new Chart(suitabilityCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Soil', 'Climate', 'Water', 'Economic'],
+                    datasets: [{
+                        label: 'Suitability Score',
+                        data: [85, 70, 65, 80],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 205, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Suitability Analysis'
+                        }
+                    }
+                }
+            });
+        }
+               // Initialize the application
+        function initApplication() {
+            // Set up map with default view
+            updateMapView();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Load initial data if needed
+            loadInitialData();
+            
+            // Test the countries API on load
+            setTimeout(() => {
+                testSelectedApi();
+            }, 1000);
+        }
+        
+        function setupEventListeners() {
+            // Add any additional event listeners needed for initialization
+            document.getElementById('mapStyle').addEventListener('change', updateMapStyle);
+            document.getElementById('overlay').addEventListener('change', updateMapOverlay);
+            document.getElementById('visualizationType').addEventListener('change', updateVisualization);
+            document.getElementById('dataMetric').addEventListener('change', updateVisualization);
+            document.getElementById('trendMetric').addEventListener('change', updateTrendChart);
+            document.getElementById('downloadData').addEventListener('click', downloadData);
+            
+            // Set up visualization tab listeners
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const vizType = tab.getAttribute('data-viz');
+                    
+                    // Update active viz tab
+                    document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update visualization
+                    updateNutritionVisualization(vizType);
+                });
+            });
+        }
+        
+        function loadInitialData() {
+            // Load any initial data needed for the application
+            // For example, you might want to pre-load data for the default country
+            const defaultCountry = 'Uganda';
+            if (defaultCountry) {
+                fetchCountryData(defaultCountry);
+                
+                // Set the default country in the dropdown
+                document.getElementById('countrySelect').value = defaultCountry;
+                currentCountry = defaultCountry;
+                
+                // Update regions for the default country
+                updateRegionSelect();
+                loadRegionData(defaultCountry);
+            }
+            
+            // Initialize any charts that should be visible on load
+            initializeTrendChart();
+        }
+        
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initApplication();
+        });
+        
+        // Test the countries API on load
+        // This is now called from initApplication()
+    </script>
+</body>
+</html>
