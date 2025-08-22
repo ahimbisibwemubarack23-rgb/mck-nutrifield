@@ -2530,31 +2530,40 @@
         }
         
         function loadRegionData(country) {
-            // Simulate loading region data for the selected country
-            const regions = {
-                'Uganda': ['Central', 'Eastern', 'Northern', 'Western'],
-                'Ghana': ['Ashanti', 'Brong-Ahafo', 'Central', 'Eastern', 'Greater Accra', 'Northern', 'Upper East', 'Upper West', 'Volta', 'Western'],
-                'Benin': ['Alibori', 'Atakora', 'Atlantique', 'Borgou', 'Collines', 'Donga', 'Kouffo', 'Littoral', 'Mono', 'Ouémé', 'Plateau', 'Zou'],
-                'Senegal': ['Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'],
-                'Malawi': ['Central', 'Northern', 'Southern']
-            };
-            
-            // Store region data for visualization
-            regionData = {};
-            if (regions[country]) {
-                regions[country].forEach(region => {
-                    regionData[region] = {
-                        yield: (Math.random() * 3 + 2).toFixed(1),
-                        productivity: (Math.random() * 2 + 3).toFixed(1),
-                        growth: (Math.random() * 20 - 5).toFixed(1),
-                        risk: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)]
-                    };
-                });
-            }
-            
-            // Update region data table
-            updateRegionDataTable();
-        }
+                // Simulate loading region data for the selected country
+                const regions = {
+                    'Uganda': ['Central', 'Eastern', 'Northern', 'Western'],
+                    'Ghana': ['Ashanti', 'Brong-Ahafo', 'Central', 'Eastern', 'Greater Accra', 'Northern', 'Upper East', 'Upper West', 'Volta', 'Western'],
+                    'Benin': ['Alibori', 'Atakora', 'Atlantique', 'Borgou', 'Collines', 'Donga', 'Kouffo', 'Littoral', 'Mono', 'Ouémé', 'Plateau', 'Zou'],
+                    'Senegal': ['Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'],
+                    'Malawi': ['Central', 'Northern', 'Southern']
+                };
+                
+                // Store region data for visualization
+                regionData = {};
+                if (regions[country]) {
+                    regions[country].forEach(region => {
+                        // More realistic data ranges based on region type
+                        const yieldBase = region.includes('Northern') ? 2.5 : 
+                                        region.includes('Central') ? 3.2 : 2.8;
+                        
+                        const riskValue = Math.random();
+                        const riskLevel = riskValue > 0.7 ? 'High' : riskValue > 0.4 ? 'Medium' : 'Low';
+                        
+                        regionData[region] = {
+                            yield: (yieldBase + Math.random() * 1.5).toFixed(1),
+                            productivity: (Math.random() * 2 + 3).toFixed(1),
+                            growth: (Math.random() * 20 - 5).toFixed(1),
+                            risk: riskLevel,
+                            population: Math.floor(Math.random() * 500000 + 500000),
+                            rainfall: Math.floor(Math.random() * 500 + 800)
+                        };
+                    });
+                }
+                
+                // Update region data table
+                updateRegionDataTable();
+    }
         
         function updateRegionSelect() {
             const country = document.getElementById('countrySelect').value;
@@ -2600,55 +2609,153 @@
         }
         
         function updateRegionDataTable() {
-            const tableBody = document.getElementById('regionDataBody');
-            tableBody.innerHTML = '';
-            
-            if (Object.keys(regionData).length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="5">No region data available</td>`;
-                tableBody.appendChild(row);
-                return;
-            }
-            
-            // Add rows for each region
-            for (const [region, data] of Object.entries(regionData)) {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${region}</td>
-                    <td>${data.yield}</td>
-                    <td>${data.growth}%</td>
-                    <td>${data.productivity}</td>
-                    <td>${data.risk}</td>
+                const tableBody = document.getElementById('regionDataBody');
+                tableBody.innerHTML = '';
+                
+                if (Object.keys(regionData).length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="6">No region data available</td>`;
+                    tableBody.appendChild(row);
+                    return;
+                }
+                
+                // Update table headers to include new columns
+                const tableHead = document.querySelector('.data-table thead tr');
+                tableHead.innerHTML = `
+                    <th>Region</th>
+                    <th>Yield (tons/ha)</th>
+                    <th>Growth (%)</th>
+                    <th>Productivity</th>
+                    <th>Risk Level</th>
+                    <th>Rainfall (mm)</th>
                 `;
-                tableBody.appendChild(row);
+                
+                // Add rows for each region
+                for (const [region, data] of Object.entries(regionData)) {
+                    const row = document.createElement('tr');
+                    
+                    // Add click event to show region on map
+                    row.style.cursor = 'pointer';
+                    row.title = `Click to view ${region} on map`;
+                    row.onclick = () => {
+                        document.getElementById('regionSelect').value = region;
+                        updateMapWithRegionData(region);
+                    };
+                    
+                    row.innerHTML = `
+                        <td>${region}</td>
+                        <td>${data.yield}</td>
+                        <td>${data.growth}%</td>
+                        <td>${data.productivity}</td>
+                        <td>${data.risk}</td>
+                        <td>${data.rainfall}</td>
+                    `;
+                    tableBody.appendChild(row);
             }
         }
         
-        function updateMapWithRegionData(region) {
-            // In a real implementation, we would highlight the selected region on the map
-            console.log(`Region selected: ${region}`);
-            
-            // For demo purposes, we'll just show an alert
-            alert(`Region data for ${region} would be displayed on the map in a real implementation`);
-        }
-        
-        function downloadData() {
-            // In a real implementation, we would generate and download a CSV or JSON file
-            alert('Data download functionality would be implemented here');
-        }
-        
-        // UI Update Functions
-        function updateUIWithCountryData(country, data) {
-            // Update stats with data from API response
-            document.getElementById('fieldCount').textContent = data.length || '0';
-            
-            // In a real implementation, we would calculate these from the actual data
-            document.getElementById('totalArea').textContent = data.length ? `${(data.length * 5.2).toFixed(1)} ha` : '0 ha';
-            document.getElementById('avgSize').textContent = data.length ? '5.2 ha' : '0 ha';
-            
-            // Add markers to map based on data
-            updateMapWithData(data);
-        }
+         function updateMapWithRegionData(region) {
+                // Clear existing markers and visualizations
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker || 
+                        layer instanceof L.CircleMarker || 
+                        layer instanceof L.Polygon ||
+                        layer instanceof L.HeatLayer) {
+                        map.removeLayer(layer);
+                    }
+                });
+                
+                // Get the country center coordinates
+                const countryCoordinates = {
+                    'Uganda': [1.3733, 32.2903],
+                    'Ghana': [7.9465, -1.0232],
+                    'Benin': [9.3077, 2.3158],
+                    'Senegal': [14.4974, -14.4524],
+                    'Malawi': [-13.2543, 34.3015]
+                };
+                
+                if (!countryCoordinates[currentCountry]) {
+                    console.error('No coordinates found for country:', currentCountry);
+                    return;
+                }
+                
+                const [centerLat, centerLng] = countryCoordinates[currentCountry];
+                
+                // Create a region boundary (simulated)
+                const regionOffset = {
+                    'Central': [0, 0],
+                    'Eastern': [0.5, 0.5],
+                    'Northern': [0.5, -0.5],
+                    'Western': [-0.5, 0],
+                    'Southern': [-0.5, -0.5],
+                    'Ashanti': [0.3, 0.2],
+                    'Brong-Ahafo': [0.4, -0.1],
+                    'Volta': [0.6, 0.3],
+                    // Add more regions as needed
+                };
+                
+                // Calculate region center based on offset
+                const offset = regionOffset[region] || [Math.random() - 0.5, Math.random() - 0.5];
+                const regionCenter = [
+                    centerLat + offset[0] * 0.8,
+                    centerLng + offset[1] * 0.8
+                ];
+                
+                // Create a polygon for the region
+                const regionPolygon = L.polygon([
+                    [regionCenter[0] - 0.2, regionCenter[1] - 0.2],
+                    [regionCenter[0] - 0.2, regionCenter[1] + 0.2],
+                    [regionCenter[0] + 0.2, regionCenter[1] + 0.2],
+                    [regionCenter[0] + 0.2, regionCenter[1] - 0.2]
+                ], {
+                    color: '#2c5f2d',
+                    weight: 2,
+                    fillColor: '#97bc62',
+                    fillOpacity: 0.3
+                }).addTo(map);
+                
+                // Add region name marker
+                L.marker(regionCenter)
+                    .addTo(map)
+                    .bindPopup(`<strong>${region} Region</strong><br>${currentCountry}`)
+                    .openPopup();
+                
+                // Add some sample data points within the region
+                for (let i = 0; i < 8; i++) {
+                    const pointLat = regionCenter[0] + (Math.random() - 0.5) * 0.15;
+                    const pointLng = regionCenter[1] + (Math.random() - 0.5) * 0.15;
+                    
+                    // Determine color based on region data if available
+                    let pointColor = '#3388ff';
+                    if (regionData[region]) {
+                        if (regionData[region].risk === 'High') pointColor = '#ff0000';
+                        else if (regionData[region].risk === 'Medium') pointColor = '#ffaa00';
+                    }
+                    
+                    L.circleMarker([pointLat, pointLng], {
+                        radius: 6,
+                        fillColor: pointColor,
+                        color: '#000',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map).bindPopup(`<b>${region}</b><br>Data point ${i+1}`);
+                }
+                
+                // Zoom to the region
+                map.setView(regionCenter, 9);
+                
+                // Update stats with region-specific data if available
+                if (regionData[region]) {
+                    document.getElementById('fieldCount').textContent = Math.floor(Math.random() * 50 + 20);
+                    document.getElementById('totalArea').textContent = `${(Math.random() * 200 + 100).toFixed(1)} ha`;
+                    document.getElementById('avgSize').textContent = `${(Math.random() * 5 + 2).toFixed(1)} ha`;
+                    document.getElementById('productivityIndex').textContent = regionData[region].productivity;
+                    
+                    // Show a notification instead of an alert
+                    showStatus(geotiffStatus, `Displaying data for ${region} region`, 'success');
+                }
+            }
         
         function updateMapWithData(data) {
             // Clear existing markers
